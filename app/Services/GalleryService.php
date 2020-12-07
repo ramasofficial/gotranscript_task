@@ -2,9 +2,25 @@
 
 namespace App\Services;
 
+use App\Models\Gallery;
 use Illuminate\Support\Facades\Storage;
 
 class GalleryService {
+    /**
+     * Next upload integer
+     *
+     * @var integer
+     */
+    protected $next_number;
+
+    /**
+     * GalleryService Class instance
+     */
+    public function __construct()
+    {
+        $this->next_number = Gallery::count() + 1;
+    }
+
     /**
      * Upload file to laravel storage
      *
@@ -13,12 +29,13 @@ class GalleryService {
      */
     public function upload_file($request)
     {
-        $file = $request->file_path->storeAs('gallery', strtotime(date('Y-m-d H:i:s')).'-'.$request->file_path->getClientOriginalName());
-        if($file) {
-            return $file;
-        } else {
+        $file = $request->file_path->storeAs('gallery', $this->next_number.'_'.strtotime(date('Y-m-d H:i:s')).'-'.$request->file_path->getClientOriginalName());
+
+        if(!$file) {
             return false;
         }
+
+        return $file;
     }
 
     /**
@@ -33,23 +50,23 @@ class GalleryService {
         $check_name = pathinfo($request['url'], PATHINFO_FILENAME);
         $allowed = ['jpeg', 'jpg', 'png', 'gif'];
 
-        if(in_array($check_link, $allowed)) {
-            $get_image = file_get_contents($request['url']);
-
-            if($get_image) {
-                $destination = 'gallery/'.strtotime(date('Y-m-d H:i:s')).'-'.$check_name.'.'.$check_link;
-                $file = Storage::put($destination, $get_image);
-
-                if($file) {
-                    return $destination;
-                } else {
-                    return false;
-                }
-            } else {
-                return false;
-            }
-        } else {
+        if(!in_array(strtolower($check_link), $allowed)) {
             return false;
         }
+
+        $get_image = file_get_contents($request['url']);
+
+        if(!$get_image) {
+            return false;
+        }
+
+        $destination = 'gallery/'.$this->next_number.'_'.strtotime(date('Y-m-d H:i:s')).'-'.$check_name.'.'.$check_link;
+        $file = Storage::put($destination, $get_image);
+
+        if(!$file) {
+            return false;
+        }
+
+        return $destination;
     }
 }
